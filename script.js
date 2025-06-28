@@ -1,5 +1,5 @@
 async function loadChannels() {
-    const response = await fetch('channels.json');
+    const response = await fetch('https://shakas.pages.dev/channels.json');
     return await response.json();
 }
 
