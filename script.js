@@ -1,75 +1,34 @@
-async function loadChannels() {
-    const timestamp = new Date().getTime(); // Cache busting
-    const response = await fetch(`https://shakas.pages.dev/channels.json?t=${timestamp}`);
-    return await response.json();
-}
+let player;
+let currentStreamUrl = '';
 
-function showChannelNotFoundError() {
-    document.getElementById('player-container').style.display = 'none';
-    document.getElementById('error-container').style.display = 'block';
-}
+async function loadChannel() {
+  try {
+    const channelId = new URLSearchParams(window.location.search).get('id') || 'italia1';
+    const response = await fetch(`channels.json?t=${Date.now()}`);
+    const { channels } = await response.json();
+    const channel = channels.find(c => c.id === channelId);
 
-async function initPlayer(channel) {
-    document.getElementById('player-container').style.display = 'block';
-    document.getElementById('error-container').style.display = 'none';
+    if (!channel?.url) return;
+    if (currentStreamUrl === channel.url) return; // Skip jika URL sama
 
-    const video = document.getElementById('video-player');
-    const container = video.parentElement;
-    const player = new shaka.Player(video);
-    
-    const ui = new shaka.ui.Overlay(player, container, video);
-    ui.getControls();
-
-    player.addEventListener('error', onErrorEvent);
-
-    if (channel.drm) {
-        console.log('Mengkonfigurasi DRM dengan clearKeys...');
-        player.configure({ drm: channel.drm });
+    // Konfigurasi DRM (jika ada)
+    if (channel.drm?.clearKeys) {
+      player.configure({ drm: { clearKeys: channel.drm.clearKeys } });
     }
 
-    try {
-        await player.load(channel.manifestUrl);
-        console.log('Video berhasil dimuat!');
-    } catch (error) {
-        onError(error);
-    }
+    await player.load(channel.url);
+    currentStreamUrl = channel.url;
+    console.log(`Stream diperbarui: ${new Date().toLocaleTimeString()}`);
+
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
 }
 
-function onErrorEvent(event) {
-    onError(event.detail);
-}
-
-function onError(error) {
-    console.error('Shaka Player Error:', error.code, 'Object:', error);
-    showChannelNotFoundError();
-}
-
-async function main() {
-    shaka.polyfill.installAll();
-
-    if (!shaka.Player.isBrowserSupported()) {
-        console.error('Browser ini tidak didukung oleh Shaka Player.');
-        showChannelNotFoundError();
-        return;
-    }
-
-    try {
-        const channels = await loadChannels();
-        const urlParams = new URLSearchParams(window.location.search);
-        const channelId = urlParams.get('id');
-        const channelToPlay = channelId 
-            ? channels.find(c => c.id === channelId) 
-            : channels[0]; // Default ke channel pertama jika tidak ada ID
-
-        if (channelToPlay) {
-            await initPlayer(channelToPlay);
-        } else {
-            showChannelNotFoundError();
-        }
-    } catch (error) {
-        console.error('Error memuat channels.json:', error);
-        showChannelNotFoundError();
-    }
-}
-
-document.addEventListener('DOMContentLoaded', main);
+// Inisialisasi
+document.addEventListener('DOMContentLoaded', async () => {
+  shaka.polyfill.installAll();
+  player = new shaka.Player(document.getElementById('video'));
+  await loadChannel();
+  setInterval(loadChannel, 30000); // Polling setiap 30 detik
+});

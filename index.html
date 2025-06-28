@@ -1,40 +1,14 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shaka Player</title>
-    
-    <!-- Memuat Tailwind CSS untuk styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Memuat library Shaka Player (versi UI) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.4/shaka-player.ui.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.4/controls.css">
-    
-    <!-- Memuat CSS kustom -->
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <title>Stream Player</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.15.5/shaka-player.compiled.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Container Utama -->
-    <div id="app">
-        <!-- Tampilan Pemutar Video -->
-        <div id="player-container">
-            <div data-shaka-player-container class="w-full h-full">
-                <video data-shaka-player id="video-player" autoplay poster="https://placehold.co/1920x1080/000000/FFFFFF?text=Memuat+Video..."></video>
-            </div>
-        </div>
+    <video id="video" autoplay controls></video>
 
-        <!-- Tampilan Error (jika channel tidak ditemukan) -->
-        <div id="error-container" class="container mx-auto p-4 md:p-8" style="display: none;">
-            <div class="col-span-full text-center bg-red-900/50 border border-red-700 p-8 rounded-lg">
-                <h2 class="text-2xl font-bold text-red-300">Channel Tidak Ditemukan</h2>
-                <p class="text-red-400 mt-2">ID channel yang Anda masukkan tidak valid.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Memuat JavaScript -->
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
