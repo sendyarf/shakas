@@ -1,5 +1,6 @@
 async function loadChannels() {
-    const response = await fetch('https://shakas.pages.dev/channels.json');
+    const timestamp = new Date().getTime(); // Cache busting
+    const response = await fetch(`https://shakas.pages.dev/channels.json?t=${timestamp}`);
     return await response.json();
 }
 
@@ -9,6 +10,9 @@ function showChannelNotFoundError() {
 }
 
 async function initPlayer(channel) {
+    document.getElementById('player-container').style.display = 'block';
+    document.getElementById('error-container').style.display = 'none';
+
     const video = document.getElementById('video-player');
     const container = video.parentElement;
     const player = new shaka.Player(video);
@@ -49,16 +53,21 @@ async function main() {
         return;
     }
 
-    const channels = await loadChannels();
-    const urlParams = new URLSearchParams(window.location.search);
-    const channelId = urlParams.get('id');
-    const channelToPlay = channelId 
-        ? channels.find(c => c.id === channelId) 
-        : channels[0]; // Default ke channel pertama jika tidak ada ID
+    try {
+        const channels = await loadChannels();
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelId = urlParams.get('id');
+        const channelToPlay = channelId 
+            ? channels.find(c => c.id === channelId) 
+            : channels[0]; // Default ke channel pertama jika tidak ada ID
 
-    if (channelToPlay) {
-        await initPlayer(channelToPlay);
-    } else {
+        if (channelToPlay) {
+            await initPlayer(channelToPlay);
+        } else {
+            showChannelNotFoundError();
+        }
+    } catch (error) {
+        console.error('Error memuat channels.json:', error);
         showChannelNotFoundError();
     }
 }
