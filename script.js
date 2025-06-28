@@ -1,35 +1,15 @@
-async function fetchChannels() {
-    try {
-        const response = await fetch('channels.json');
-        if (!response.ok) {
-            throw new Error(`Gagal memuat channels.json: ${response.statusText}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Gagal memuat daftar channel:', error);
-        return [];
-    }
+async function loadChannels() {
+    const response = await fetch('channels.json');
+    return await response.json();
 }
 
 function showChannelNotFoundError(container) {
     container.innerHTML = `<div class="col-span-full text-center bg-red-900/50 border border-red-700 p-8 rounded-lg"><h2 class="text-2xl font-bold text-red-300">Channel Tidak Ditemukan</h2><p class="text-red-400 mt-2">ID channel yang Anda masukkan tidak valid.</p><a href="/" class="mt-6 inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Kembali ke Daftar Channel</a></div>`;
 }
 
-function showPlayerError(container, error) {
-    let errorMessage = 'Gagal memutar video.';
-    if (error.code === 4032) {
-        errorMessage = 'Konfigurasi DRM tidak valid atau stream mem require kunci DRM yang tidak disediakan di channels.json.';
-    } else if (error.code === 3015) {
-        errorMessage = 'Gagal memuat stream karena masalah CORS. Pastikan server stream mengizinkan CORS.';
-    } else if (error.code === 3016) {
-        errorMessage = 'Gagal memuat manifest stream. Periksa URL atau format stream.';
-    }
-    container.innerHTML = `<div class="col-span-full text-center bg-red-900/50 border border-red-700 p-8 rounded-lg"><h2 class="text-2xl font-bold text-red-300">Gagal Memutar Video</h2><p class="text-red-400 mt-2">Error: ${errorMessage}</p><p class="text-red-400 mt-2">Kode: ${error.code} | Detail: ${JSON.stringify(error)}</p><a href="/" class="mt-6 inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Kembali ke Daftar Channel</a></div>`;
-}
-
 function displayChannelList(channels) {
     const channelListElement = document.getElementById('channel-list');
-    channelListElement.innerHTML = ''; 
+    channelListElement.innerHTML = '';
     channels.forEach(channel => {
         const link = document.createElement('a');
         link.href = `?id=${channel.id}`;
@@ -48,70 +28,37 @@ function displayChannelList(channels) {
 }
 
 async function initPlayer(channel) {
-    const channelListContainer = document.getElementById('channel-list-container');
-    const playerContainer = document.getElementById('player-container');
-    channelListContainer.style.display = 'none';
-    playerContainer.style.display = 'flex';
+    document.getElementById('channel-list-container').style.display = 'none';
+    document.getElementById('player-container').style.display = 'block';
 
     const video = document.getElementById('video-player');
-    const container = video.parentElement; 
+    const container = video.parentElement;
     const player = new shaka.Player(video);
     
     const ui = new shaka.ui.Overlay(player, container, video);
     ui.getControls();
 
-    player.addEventListener('error', (event) => onErrorEvent(event, playerContainer));
+    player.addEventListener('error', onErrorEvent);
 
-    // Konfigurasi DRM jika ada
     if (channel.drm) {
-        console.log('Mengkonfigurasi DRM dengan clearKeys:', channel.drm);
-        player.configure({ 
-            drm: channel.drm 
-        });
-    } else {
-        console.log('Stream tanpa DRM.');
-        player.configure({
-            drm: {
-                clearKeys: {}, // Kosongkan konfigurasi DRM
-                servers: {}, // Nonaktifkan server DRM
-                advanced: {
-                    'com.widevine.alpha': { distinctiveIdentifierRequired: false }
-                }
-            }
-        });
+        console.log('Mengkonfigurasi DRM dengan clearKeys...');
+        player.configure({ drm: channel.drm });
     }
 
-    // Konfigurasi streaming untuk DASH
-    player.configure({
-        streaming: {
-            bufferingGoal: 60,
-            rebufferingGoal: 2,
-            bufferBehind: 30,
-            retryParameters: {
-                maxAttempts: 5,
-                baseDelay: 1000,
-                backoffFactor: 2,
-                fuzzFactor: 0.5
-            }
-        }
-    });
-
     try {
-        console.log(`Memuat stream: ${channel.manifestUrl}`);
         await player.load(channel.manifestUrl);
         console.log('Video berhasil dimuat!');
     } catch (error) {
-        onError(error, playerContainer);
+        onError(error);
     }
 }
 
-function onErrorEvent(event, container) {
-    onError(event.detail, container);
+function onErrorEvent(event) {
+    onError(event.detail);
 }
 
-function onError(error, container) {
-    console.error('Shaka Player Error:', error);
-    showPlayerError(container, error);
+function onError(error) {
+    console.error('Shaka Player Error:', error.code, 'Object:', error);
 }
 
 async function main() {
@@ -119,15 +66,12 @@ async function main() {
 
     if (!shaka.Player.isBrowserSupported()) {
         console.error('Browser ini tidak didukung oleh Shaka Player.');
-        const channelListContainer = document.getElementById('channel-list-container');
-        channelListContainer.innerHTML = `<div class="col-span-full text-center bg-red-900/50 border border-red-700 p-8 rounded-lg"><h2 class="text-2xl font-bold text-red-300">Browser Tidak Didukung</h2><p class="text-red-400 mt-2">Browser Anda tidak mendukung Shaka Player.</p></div>`;
         return;
     }
 
+    const channels = await loadChannels();
     const urlParams = new URLSearchParams(window.location.search);
     const channelId = urlParams.get('id');
-
-    const channels = await fetchChannels();
 
     if (channelId) {
         const channelToPlay = channels.find(c => c.id === channelId);
