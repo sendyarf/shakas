@@ -1,17 +1,16 @@
+const WORKER_PROXY_URL = 'https://channel-proxy.sendyarifin8.workers.dev/';
+
 let player;
 let currentChannelUrl = '';
 
-// Inisialisasi player
 async function initPlayer() {
   try {
     shaka.polyfill.installAll();
-    
     if (!shaka.Player.isBrowserSupported()) {
       throw new Error('Browser tidak mendukung Shaka Player');
     }
 
     player = new shaka.Player(document.getElementById('video'));
-    
     player.configure({
       streaming: {
         bufferingGoal: 20,
@@ -19,23 +18,21 @@ async function initPlayer() {
       }
     });
 
-    player.addEventListener('error', event => {
-      showError(`Kesalahan Player: ${event.detail.code}`);
-    });
-
   } catch (error) {
     showError(`Gagal inisialisasi: ${error.message}`);
   }
 }
 
-// Memuat channel
 async function loadChannel() {
   if (!player) return;
 
   try {
-    const channelId = new URLSearchParams(location.search).get('id') || 'italia1';
-    const response = await fetch('channels.json?t=' + Date.now());
+    // Gunakan Worker Proxy URL
+    const response = await fetch(`${WORKER_PROXY_URL}?t=${Date.now()}`);
+    if (!response.ok) throw new Error('Gagal memuat data channel');
+
     const data = await response.json();
+    const channelId = new URLSearchParams(location.search).get('id') || 'italia1';
     const channel = data.channels.find(c => c.id === channelId);
 
     if (!channel) throw new Error(`Channel ${channelId} tidak ditemukan`);
@@ -44,7 +41,7 @@ async function loadChannel() {
     document.getElementById('channel-info').textContent = channel.name;
     document.getElementById('error').style.display = 'none';
 
-    // Konfigurasi DRM jika ada
+    // Konfigurasi DRM
     if (channel.drm?.clearKeys) {
       player.configure({
         drm: {
@@ -57,10 +54,12 @@ async function loadChannel() {
     if (currentChannelUrl !== channel.url) {
       await player.load(channel.url);
       currentChannelUrl = channel.url;
+      console.log('Stream diperbarui:', new Date());
     }
 
   } catch (error) {
     showError(error.message);
+    console.error('Detail error:', error);
   }
 }
 
@@ -68,12 +67,11 @@ function showError(message) {
   const errorElem = document.getElementById('error');
   errorElem.textContent = message;
   errorElem.style.display = 'block';
-  console.error(message);
 }
 
 // Start aplikasi
 document.addEventListener('DOMContentLoaded', async () => {
   await initPlayer();
   await loadChannel();
-  setInterval(loadChannel, 30000); // Polling setiap 30 detik
+  setInterval(loadChannel, 5000); // Polling lebih agresif (5 detik)
 });
