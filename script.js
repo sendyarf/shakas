@@ -1,27 +1,79 @@
-// Ganti fetch biasa dengan Worker URL
-const CHANNELS_URL = 'https://channel-proxy.sendyarifin8.workers.dev/';
+let player;
+let currentChannelUrl = '';
 
-async function loadChannel() {
+// Inisialisasi player
+async function initPlayer() {
   try {
-    const response = await fetch(CHANNELS_URL);
-    const data = await response.json();
+    shaka.polyfill.installAll();
     
-    const channelId = new URLSearchParams(location.search).get('id') || 'italia1';
-    const channel = data.channels.find(c => c.id === channelId);
-
-    // Update player (Shaka)
-    if (channel) {
-      await player.unload();
-      if (channel.drm?.clearKeys) {
-        player.configure({ drm: { clearKeys: channel.drm.clearKeys } });
-      }
-      await player.load(channel.url);
-      console.log('Stream updated!', new Date());
+    if (!shaka.Player.isBrowserSupported()) {
+      throw new Error('Browser tidak mendukung Shaka Player');
     }
+
+    player = new shaka.Player(document.getElementById('video'));
+    
+    player.configure({
+      streaming: {
+        bufferingGoal: 20,
+        rebufferingGoal: 2
+      }
+    });
+
+    player.addEventListener('error', event => {
+      showError(`Kesalahan Player: ${event.detail.code}`);
+    });
+
   } catch (error) {
-    console.error('Update failed:', error);
+    showError(`Gagal inisialisasi: ${error.message}`);
   }
 }
 
-// Polling setiap 3 detik
-setInterval(loadChannel, 3000);
+// Memuat channel
+async function loadChannel() {
+  if (!player) return;
+
+  try {
+    const channelId = new URLSearchParams(location.search).get('id') || 'italia1';
+    const response = await fetch('channels.json?t=' + Date.now());
+    const data = await response.json();
+    const channel = data.channels.find(c => c.id === channelId);
+
+    if (!channel) throw new Error(`Channel ${channelId} tidak ditemukan`);
+
+    // Update UI
+    document.getElementById('channel-info').textContent = channel.name;
+    document.getElementById('error').style.display = 'none';
+
+    // Konfigurasi DRM jika ada
+    if (channel.drm?.clearKeys) {
+      player.configure({
+        drm: {
+          clearKeys: channel.drm.clearKeys
+        }
+      });
+    }
+
+    // Load stream jika URL berbeda
+    if (currentChannelUrl !== channel.url) {
+      await player.load(channel.url);
+      currentChannelUrl = channel.url;
+    }
+
+  } catch (error) {
+    showError(error.message);
+  }
+}
+
+function showError(message) {
+  const errorElem = document.getElementById('error');
+  errorElem.textContent = message;
+  errorElem.style.display = 'block';
+  console.error(message);
+}
+
+// Start aplikasi
+document.addEventListener('DOMContentLoaded', async () => {
+  await initPlayer();
+  await loadChannel();
+  setInterval(loadChannel, 30000); // Polling setiap 30 detik
+});
