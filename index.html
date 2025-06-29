@@ -4,14 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shaka Player Streaming</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="styles.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.15.5/shaka-player.compiled.js"></script>
 </head>
 <body>
-  <div class="player-container">
-    <video id="video" autoplay controls></video>
-    <div id="channel-info">Loading channel...</div>
-    <div id="error" class="error-message"></div>
+  <div class="container">
+    <div class="player-container">
+      <video id="video" autoplay controls></video>
+      <div id="channel-info">Memuat channel...</div>
+      <div id="error" class="error-message"></div>
+    </div>
+    
+    <div class="channel-list">
+      <h3>Daftar Channel</h3>
+      <div id="channels" class="channels-grid"></div>
+    </div>
   </div>
 
   <script src="script.js"></script>
